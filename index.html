@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Hangman</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    /* Simple responsive styling */
+    :root{--bg:#f7f7fb;--card:#fff;--accent:#333}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;margin:0;background:var(--bg);color:var(--accent);display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+    .card{background:var(--card);padding:20px;border-radius:12px;box-shadow:0 6px 20px rgba(10,10,20,0.08);max-width:760px;width:100%}
+    h1{margin:0 0 8px;font-size:20px}
+    .top{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .word{font-size:28px;letter-spacing:6px;margin:20px 0;display:flex;gap:10px;flex-wrap:wrap}
+    .letter-box{min-width:24px;border-bottom:3px solid #ddd;padding:4px 6px;text-align:center;font-weight:600}
+    .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .kbd{display:grid;grid-template-columns:repeat(13,1fr);gap:6px;margin:12px 0}
+    .key{padding:8px 6px;border-radius:6px;text-align:center;cursor:pointer;border:1px solid #eee;user-select:none}
+    .key.disabled{opacity:.35;cursor:not-allowed}
+    button{padding:8px 12px;border-radius:8px;border:0;background:#111;color:#fff;cursor:pointer}
+    .meta{display:flex;gap:12px;align-items:center}
+    .hangman{width:180px;height:240px}
+    .status{margin-top:12px}
+    .msg{padding:8px 10px;border-radius:8px;background:#f0f4ff;color:#073;display:inline-block}
+    @media (max-width:520px){.kbd{grid-template-columns:repeat(7,1fr)}}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="top">
+      <div>
+        <h1>Hangman</h1>
+        <div class="meta">
+          <div>Wrong: <span id="wrongCount">0</span>/<span id="maxWrong">6</span></div>
+          <div>Wins: <span id="wins">0</span></div>
+          <div>Losses: <span id="losses">0</span></div>
+        </div>
+      </div>
+
+      <div>
+        <svg class="hangman" viewBox="0 0 120 160" id="svgHangman" aria-hidden="true">
+          <line x1="10" y1="150" x2="110" y2="150" stroke="#111" stroke-width="2"/>
+          <line x1="30" y1="150" x2="30" y2="10" stroke="#111" stroke-width="2"/>
+          <line x1="30" y1="10" x2="80" y2="10" stroke="#111" stroke-width="2"/>
+          <line x1="80" y1="10" x2="80" y2="25" stroke="#111" stroke-width="2"/>
+          <circle cx="80" cy="38" r="10" stroke="#111" stroke-width="2" fill="none" class="part" data-part="0"/>
+          <line x1="80" y1="48" x2="80" y2="80" stroke="#111" stroke-width="2" class="part" data-part="1"/>
+          <line x1="80" y1="60" x2="60" y2="75" stroke="#111" stroke-width="2" class="part" data-part="2"/>
+          <line x1="80" y1="60" x2="100" y2="75" stroke="#111" stroke-width="2" class="part" data-part="3"/>
+          <line x1="80" y1="80" x2="65" y2="105" stroke="#111" stroke-width="2" class="part" data-part="4"/>
+          <line x1="80" y1="80" x2="95" y2="105" stroke="#111" stroke-width="2" class="part" data-part="5"/>
+        </svg>
+      </div>
+    </div>
+
+    <div id="word" class="word" aria-live="polite"></div>
+
+    <div class="controls">
+      <div>
+        <div id="keyboard" class="kbd"></div>
+        <div style="font-size:12px;color:#666;margin-top:6px">Made By Mendukusai</div>
+		<div style="font-size:12px;color:#666;margin-top:6px">Shout out to Siwak for the js file</div>
+      </div>
+
+      <div style="margin-left:auto;display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+        <button id="newBtn">New word</button>
+        <button id="giveUpBtn">Give up</button>
+      </div>
+    </div>
+
+    <div class="status">
+      <div id="message" class="msg" style="display:none"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { allWords } from './words.js';
+
+   
+    const maxWrong = 6;
+    let secret = '';
+    let revealed = [];     
+    let wrongGuesses = 0;
+    let guessed = new Set();
+    let wins = 0, losses = 0;
+
+    const wordDiv = document.getElementById('word');
+    const keyboardDiv = document.getElementById('keyboard');
+    const wrongCountSpan = document.getElementById('wrongCount');
+    const maxWrongSpan = document.getElementById('maxWrong');
+    const messageDiv = document.getElementById('message');
+    const newBtn = document.getElementById('newBtn');
+    const giveUpBtn = document.getElementById('giveUpBtn');
+    const winsSpan = document.getElementById('wins');
+    const lossesSpan = document.getElementById('losses');
+    const svg = document.getElementById('svgHangman');
+    const parts = Array.from(svg.querySelectorAll('.part'));
+
+    maxWrongSpan.textContent = maxWrong;
+
+ 
+    function pickWord() {
+   
+      const w = allWords[Math.floor(Math.random() * allWords.length)];
+      return String(w);
+    }
+
+    function normalizeChar(c) {
+      
+      return c.toLowerCase();
+    }
+
+    function isAlpha(c) {
+      return /^[A-Za-z]$/.test(c);
+    }
+
+    
+    function startNewWord() {
+  secret = pickWord();
+  wrongGuesses = 0;
+  guessed.clear();
+
+  
+  revealed = Array.from(secret).map(ch => (isAlpha(ch) ? null : ch));
+
+  if (isAlpha(secret[0])) {
+    revealed[0] = secret[0];
+    guessed.add(normalizeChar(secret[0]));
+
+   
+    const keyEl = document.querySelector(`.key[data-letter="${normalizeChar(secret[0]).toUpperCase()}"]`);
+    if (keyEl) keyEl.classList.add('disabled');
+  }
+
+  
+  if (secret.length > 4) {
+    let idx;
+    do {
+      idx = Math.floor(Math.random() * secret.length);
+    } while (!isAlpha(secret[idx]) || revealed[idx] !== null);
+
+    revealed[idx] = secret[idx];
+    guessed.add(normalizeChar(secret[idx]));
+
+    
+    const keyEl = document.querySelector(`.key[data-letter="${normalizeChar(secret[idx]).toUpperCase()}"]`);
+    if (keyEl) keyEl.classList.add('disabled');
+  }
+  
+
+  updateDisplay();
+  updateHangman();
+  message('');
+  enableAllKeys();
+}
+
+
+   
+    function updateDisplay() {
+     
+      wordDiv.innerHTML = '';
+      revealed.forEach((ch, idx) => {
+        const box = document.createElement('div');
+        box.className = 'letter-box';
+        box.textContent = ch === null ? ' ' : ch;
+        if (ch === null) box.textContent = ''; // empty for unrevealed
+        wordDiv.appendChild(box);
+      });
+
+      wrongCountSpan.textContent = wrongGuesses;
+      winsSpan.textContent = wins;
+      lossesSpan.textContent = losses;
+    }
+
+    function updateHangman() {
+      
+      parts.forEach((p, i) => {
+        p.style.display = i < wrongGuesses ? 'block' : 'none';
+      });
+    }
+
+    function message(text, win=false, lose=false) {
+      if (!text) {
+        messageDiv.style.display = 'none';
+        messageDiv.textContent = '';
+        return;
+      }
+      messageDiv.style.display = 'inline-block';
+      messageDiv.textContent = text;
+      if (win) messageDiv.style.background = '#e6ffed', messageDiv.style.color = '#056625';
+      else if (lose) messageDiv.style.background = '#ffe6e6', messageDiv.style.color = '#7a1a1a';
+      else messageDiv.style.background = '#f0f4ff', messageDiv.style.color = '#073';
+    }
+
+   
+    function handleGuess(letter) {
+      if (guessed.has(letter) || wrongGuesses >= maxWrong) return;
+      guessed.add(letter);
+      
+      const keyEl = document.querySelector(`.key[data-letter="${letter}"]`);
+      if (keyEl) keyEl.classList.add('disabled');
+
+      const lc = normalizeChar(letter);
+      let found = false;
+      
+      for (let i=0;i<secret.length;i++){
+        if (isAlpha(secret[i]) && normalizeChar(secret[i]) === lc) {
+          revealed[i] = secret[i]; 
+          found = true;
+        }
+      }
+      if (!found) {
+        wrongGuesses++;
+        updateHangman();
+      }
+      updateDisplay();
+      checkGameOver();
+    }
+
+    function checkGameOver() {
+      
+      const stillHidden = revealed.some(ch => ch === null);
+      if (!stillHidden) {
+        wins++;
+        updateDisplay();
+        message(`You win — the word was "${secret}".`, true, false);
+        disableAllKeys();
+        return;
+      }
+      
+      if (wrongGuesses >= maxWrong) {
+        losses++;
+        updateDisplay();
+        
+        revealed = Array.from(secret);
+        updateDisplay();
+        updateHangman();
+        message(`You lost — the word was "${secret}".`, false, true);
+        disableAllKeys();
+      }
+    }
+
+    
+    function buildKeyboard() {
+      keyboardDiv.innerHTML = '';
+      const letters = Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+      letters.forEach(l => {
+        const btn = document.createElement('div');
+        btn.className = 'key';
+        btn.textContent = l;
+        btn.dataset.letter = l;
+        btn.addEventListener('click', () => handleGuess(l));
+        keyboardDiv.appendChild(btn);
+      });
+    }
+
+    function disableAllKeys() {
+      document.querySelectorAll('.key').forEach(k => k.classList.add('disabled'));
+    }
+    function enableAllKeys() {
+      document.querySelectorAll('.key').forEach(k => k.classList.remove('disabled'));
+    }
+
+  
+    newBtn.addEventListener('click', startNewWord);
+    giveUpBtn.addEventListener('click', () => {
+      losses++;
+      revealed = Array.from(secret);
+      updateDisplay();
+      updateHangman();
+      message(`You gave up. The word was "${secret}".`, false, true);
+      disableAllKeys();
+    });
+
+    window.addEventListener('keydown', (ev) => {
+      const key = ev.key;
+      if (key.length === 1 && /^[a-zA-Z]$/.test(key)) {
+        handleGuess(key.toUpperCase());
+      }
+      
+      if (ev.key === ' ' && (wrongGuesses >= maxWrong || revealed.every(ch => ch !== null))) {
+        ev.preventDefault();
+        startNewWord();
+      }
+    });
+
+    
+    buildKeyboard();
+    startNewWord();
+  </script>
+</body>
+</html>
