@@ -962,7 +962,7 @@ export const allWords = [
     "where",
     "whether",
     "which",
-    "while"
+    "while",
     "white",
     "who",
     "whole",
@@ -1512,3 +1512,4 @@ export const allSents = [
     "Bribes fail where honest men work.",
     "Birth and death mark the limits of life."
 ];
+
