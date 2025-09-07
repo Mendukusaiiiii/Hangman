@@ -5,10 +5,9 @@
   <title>Hangman</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    /* Simple responsive styling */
     :root{--bg:#f7f7fb;--card:#fff;--accent:#333}
     body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;margin:0;background:var(--bg);color:var(--accent);display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
-    .card{background:var(--card);padding:20px;border-radius:12px;box-shadow:0 6px 20px rgba(10,10,20,0.08);max-width:760px;width:100%}
+    .card{background:var(--card);padding:20px;border-radius:12px;box-shadow:0 6px 20px rgba(10,10,20,0.08);max-width:760px;width:100%;z-index:1}
     h1{margin:0 0 8px;font-size:20px}
     .top{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
     .word{font-size:28px;letter-spacing:6px;margin:20px 0;display:flex;gap:10px;flex-wrap:wrap}
@@ -23,9 +22,84 @@
     .status{margin-top:12px}
     .msg{padding:8px 10px;border-radius:8px;background:#f0f4ff;color:#073;display:inline-block}
     @media (max-width:520px){.kbd{grid-template-columns:repeat(7,1fr)}}
+
+    
+    .achievements-panel {
+      position: fixed;
+      top: 0;
+      left: -250px; 
+      width: 250px;
+      height: 100%;
+      background: #fff;
+      box-shadow: 3px 0 10px rgba(0,0,0,0.15);
+      padding: 20px;
+      transition: left 0.3s ease;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+    }
+    .achievements-panel.active {
+      left: 0;
+    }
+    .achievements-panel h2 {
+      margin-top: 0;
+      font-size: 18px;
+    }
+    .achievement {
+      padding: 8px;
+      margin: 6px 0;
+      border-radius: 6px;
+      background: #f5f5f5;
+      font-size: 14px;
+    }
+    .achievement.unlocked {
+      background: #e6ffed;
+      color: #056625;
+      font-weight: bold;
+    }
+    
+    .toggle-btn {
+      position: absolute;
+      top: 20px;
+      right: -50px;
+      background: #111;
+      color: #fff;
+      border-radius: 0 8px 8px 0;
+      width: 50px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+	.achievement {
+    padding: 8px;
+    margin: 6px 0;
+    border-radius: 6px;
+    background: #f5f5f5;
+    font-size: 14px;
+  }
+  .achievement.unlocked {
+    background: #fff8dc;
+    color: #7a5900;
+    font-weight: bold;
+  }
+</style>
   </style>
 </head>
 <body>
+  
+<div class="achievements-panel" id="achievementsPanel">
+  <div class="toggle-btn" id="toggleBtn">🏆</div>
+  <h2>Achievements</h2>
+  <div id="achievementsList">
+    <div class="achievement" id="ach1">🏅 First Win</div>
+    <div class="achievement" id="ach2">🥈 5 Wins</div>
+    <div class="achievement" id="ach3">🥇 Perfect Game</div>
+  </div>
+</div>
+
+ 
   <div class="card">
     <div class="top">
       <div>
@@ -58,8 +132,8 @@
     <div class="controls">
       <div>
         <div id="keyboard" class="kbd"></div>
-        <div style="font-size:12px;color:#666;margin-top:6px">Made By Mendukusai</div>
-		<div style="font-size:12px;color:#666;margin-top:6px">Shout out to Siwak for the js file</div>
+        <div style="font-size:12px;color:#666;margin-top:6px">Made by Mendukusai in colloboration with Siwak</div>
+        
       </div>
 
       <div style="margin-left:auto;display:flex;flex-direction:column;gap:8px;align-items:flex-end">
@@ -76,7 +150,6 @@
   <script type="module">
     import { allWords } from './words.js';
 
-   
     const maxWrong = 6;
     let secret = '';
     let revealed = [];     
@@ -96,84 +169,56 @@
     const svg = document.getElementById('svgHangman');
     const parts = Array.from(svg.querySelectorAll('.part'));
 
-    maxWrongSpan.textContent = maxWrong;
+   
+    const ach1 = document.getElementById("ach1");
+    const ach2 = document.getElementById("ach2");
+    const ach3 = document.getElementById("ach3");
 
  
+    const toggleBtn = document.getElementById("toggleBtn");
+    const achievementsPanel = document.getElementById("achievementsPanel");
+    toggleBtn.addEventListener("click", () => {
+      achievementsPanel.classList.toggle("active");
+    });
+
+    maxWrongSpan.textContent = maxWrong;
+
     function pickWord() {
-   
-      const w = allWords[Math.floor(Math.random() * allWords.length)];
-      return String(w);
+      return String(allWords[Math.floor(Math.random() * allWords.length)]);
     }
+    function normalizeChar(c) { return c.toLowerCase(); }
+    function isAlpha(c) { return /^[A-Za-z]$/.test(c); }
 
-    function normalizeChar(c) {
-      
-      return c.toLowerCase();
-    }
-
-    function isAlpha(c) {
-      return /^[A-Za-z]$/.test(c);
-    }
-
-    
     function startNewWord() {
-  secret = pickWord();
-  wrongGuesses = 0;
-  guessed.clear();
+      secret = pickWord();
+      wrongGuesses = 0;
+      guessed.clear();
+      revealed = Array.from(secret).map(ch => (isAlpha(ch) ? null : ch));
 
-  
-  revealed = Array.from(secret).map(ch => (isAlpha(ch) ? null : ch));
+      if (isAlpha(secret[0])) {
+        revealed[0] = secret[0];
+        guessed.add(normalizeChar(secret[0]));
+      }
+      updateDisplay();
+      updateHangman();
+      message('');
+      enableAllKeys();
+    }
 
-  if (isAlpha(secret[0])) {
-    revealed[0] = secret[0];
-    guessed.add(normalizeChar(secret[0]));
-
-   
-    const keyEl = document.querySelector(`.key[data-letter="${normalizeChar(secret[0]).toUpperCase()}"]`);
-    if (keyEl) keyEl.classList.add('disabled');
-  }
-
-  
-  if (secret.length > 4) {
-    let idx;
-    do {
-      idx = Math.floor(Math.random() * secret.length);
-    } while (!isAlpha(secret[idx]) || revealed[idx] !== null);
-
-    revealed[idx] = secret[idx];
-    guessed.add(normalizeChar(secret[idx]));
-
-    
-    const keyEl = document.querySelector(`.key[data-letter="${normalizeChar(secret[idx]).toUpperCase()}"]`);
-    if (keyEl) keyEl.classList.add('disabled');
-  }
-  
-
-  updateDisplay();
-  updateHangman();
-  message('');
-  enableAllKeys();
-}
-
-
-   
     function updateDisplay() {
-     
       wordDiv.innerHTML = '';
-      revealed.forEach((ch, idx) => {
+      revealed.forEach((ch) => {
         const box = document.createElement('div');
         box.className = 'letter-box';
-        box.textContent = ch === null ? ' ' : ch;
-        if (ch === null) box.textContent = ''; 
+        box.textContent = ch === null ? '' : ch;
         wordDiv.appendChild(box);
       });
-
       wrongCountSpan.textContent = wrongGuesses;
       winsSpan.textContent = wins;
       lossesSpan.textContent = losses;
     }
 
     function updateHangman() {
-      
       parts.forEach((p, i) => {
         p.style.display = i < wrongGuesses ? 'block' : 'none';
       });
@@ -192,17 +237,11 @@
       else messageDiv.style.background = '#f0f4ff', messageDiv.style.color = '#073';
     }
 
-   
     function handleGuess(letter) {
       if (guessed.has(letter) || wrongGuesses >= maxWrong) return;
       guessed.add(letter);
-      
-      const keyEl = document.querySelector(`.key[data-letter="${letter}"]`);
-      if (keyEl) keyEl.classList.add('disabled');
-
       const lc = normalizeChar(letter);
       let found = false;
-      
       for (let i=0;i<secret.length;i++){
         if (isAlpha(secret[i]) && normalizeChar(secret[i]) === lc) {
           revealed[i] = secret[i]; 
@@ -218,33 +257,32 @@
     }
 
     function checkGameOver() {
-      
       const stillHidden = revealed.some(ch => ch === null);
       if (!stillHidden) {
         wins++;
         updateDisplay();
-        message(`You win — the word was "${secret}".`, true, false);
+        message(`You win, the word was "${secret}".`, true, false);
         disableAllKeys();
-        return;
-      }
-      
-      if (wrongGuesses >= maxWrong) {
+        unlockAchievements();
+      } else if (wrongGuesses >= maxWrong) {
         losses++;
-        updateDisplay();
-        
         revealed = Array.from(secret);
         updateDisplay();
         updateHangman();
-        message(`You lost — the word was "${secret}".`, false, true);
+        message(`You lost, the word was "${secret}".`, false, true);
         disableAllKeys();
       }
     }
 
-    
+    function unlockAchievements() {
+      if (wins >= 1) ach1.classList.add("unlocked");
+      if (wins >= 5) ach2.classList.add("unlocked");
+      if (wrongGuesses === 0) ach3.classList.add("unlocked");
+    }
+
     function buildKeyboard() {
       keyboardDiv.innerHTML = '';
-      const letters = Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ');
-      letters.forEach(l => {
+      Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ').forEach(l => {
         const btn = document.createElement('div');
         btn.className = 'key';
         btn.textContent = l;
@@ -261,7 +299,6 @@
       document.querySelectorAll('.key').forEach(k => k.classList.remove('disabled'));
     }
 
-  
     newBtn.addEventListener('click', startNewWord);
     giveUpBtn.addEventListener('click', () => {
       losses++;
@@ -273,21 +310,15 @@
     });
 
     window.addEventListener('keydown', (ev) => {
-      const key = ev.key;
-      if (key.length === 1 && /^[a-zA-Z]$/.test(key)) {
-        handleGuess(key.toUpperCase());
-      }
-      
+      if (ev.key.length === 1 && /^[a-zA-Z]$/.test(ev.key)) handleGuess(ev.key.toUpperCase());
       if (ev.key === ' ' && (wrongGuesses >= maxWrong || revealed.every(ch => ch !== null))) {
         ev.preventDefault();
         startNewWord();
       }
     });
 
-    
     buildKeyboard();
     startNewWord();
   </script>
 </body>
 </html>
-
