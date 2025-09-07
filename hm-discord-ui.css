@@ -1,0 +1,34 @@
+.bg-dark {
+    background-color: #1a1a1e;
+}
+
+.fnt-mono {
+    font-family: 'Consolas', 'Courier New', Courier, monospace;
+    color: #efeff0;
+}
+
+.container-codeblock {
+    background-color: #1f202f;
+    border: 1px solid #373745;
+    border-radius: 4px;
+    font-size: 90%;
+    line-height: 1rem;
+    padding: 7px;
+    margin: 6px auto;
+}
+
+.center-screen {
+    display: flex;
+    margin: auto;
+    height: 100vh;
+    justify-content: center;
+    align-items: center;
+}
+
+.container-main {
+    min-width: 400px;
+}
+
+.scale-1-5 {
+    transform: scale(1.5);
+}
