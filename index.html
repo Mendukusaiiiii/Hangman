@@ -268,7 +268,7 @@
     </div>
 
     <script type="module">
-        import { allWords } from '/words-sentences.js';
+        import { allWords } from 'words.js';
 
         const maxWrong = 6;
         let secret = '';
@@ -438,7 +438,6 @@
                 btn.dataset.letter = l;
                 btn.addEventListener('click', () => handleGuess(l));
                 rowBall[idRow].appendChild(btn);
-                console.log(idRow, l);
             }
         }
 
@@ -474,3 +473,4 @@
 </body>
 
 </html>
+
